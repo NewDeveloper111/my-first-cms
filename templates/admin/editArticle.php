@@ -45,9 +45,14 @@
                 <label for="publicationDate">Publication Date</label>
                 <input type="date" name="publicationDate" id="publicationDate" placeholder="YYYY-MM-DD" required maxlength="10" value="<?php echo $results['article']->publicationDate ? date( "Y-m-d", $results['article']->publicationDate ) : "" ?>" />
               </li>
-
-
-            </ul>
+	      
+	      <li>
+                <label for="active">Active</label>
+		<input type="hidden" name="active" value="0">
+                <input type=checkbox name="active" value="1" <?php echo $results['article']->active ? 'checked' : ""?>>
+              </li>
+	    
+	    </ul>
 
             <div class="buttons">
               <input type="submit" name="saveChanges" value="Save Changes" />

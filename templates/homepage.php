@@ -12,7 +12,7 @@
                     <?php echo htmlspecialchars( $article->title )?>
                 </a>
                 
-                <?php if (isset($article->categoryId)) { ?>
+                <?php if (! empty($article->categoryId)) { ?>
                     <span class="category">
                         in 
                         <a href=".?action=archive&amp;categoryId=<?php echo $article->categoryId?>">

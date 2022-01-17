@@ -17,6 +17,7 @@
               <th>Publication Date</th>
               <th>Article</th>
               <th>Category</th>
+	      <th>Active</th>
             </tr>
 
 <!--<?php echo "<pre>"; print_r ($results['articles'][2]->publicationDate); echo "</pre>"; ?> Обращаемся к дате массива $results. Дата = 0 -->
@@ -35,13 +36,14 @@
             <!--<?php echo "<pre>"; print_r ($results); echo "</pre>"; ?> Здесь есть доступ к полному объекту $results -->
              
                 <?php 
-                if(isset ($article->categoryId)) {
+                if(! empty($article->categoryId)) {
                     echo $results['categories'][$article->categoryId]->name;                        
                 }
                 else {
                 echo "Без категории";
                 }?>
               </td>
+	      <td><?php echo $article->active ? 'YES' : 'NO'?></td>
             </tr>
 
     <?php } ?>
