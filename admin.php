@@ -38,6 +38,18 @@ switch ($action) {
     case 'deleteCategory':
         deleteCategory();
         break;
+    case 'newUser':
+        newUser();
+        break;
+    case 'editUser':
+        editUser();
+        break;
+    case 'listUsers':
+        listUsers();
+        break;
+    case 'deleteUser':
+        deleteUser();
+        break;
     default:
         listArticles();
 }
@@ -61,12 +73,18 @@ function login() {
           $_SESSION['username'] = ADMIN_USERNAME;
           header( "Location: admin.php");
 
-        } else {
-
-          // Ошибка входа: выводим сообщение об ошибке для пользователя
-          $results['errorMessage'] = "Неправильный пароль, попробуйте ещё раз.";
-          require( TEMPLATE_PATH . "/admin/loginForm.php" );
-        }
+        }  elseif (User::loginExist($_POST['username']) && 
+		User::loginActive($_POST['username']) &&
+		$_POST['password'] == User::loginPassword($_POST['username'])) {
+	    // Вход прошел успешно: пользователь есть в базе данных, его статус активен,
+	    //  создаем сессию и перенаправляем на страницу администратора
+	    $_SESSION['username'] = $_POST['username'];
+          header("Location: admin.php");
+	} else {
+	  // Ошибка входа: выводим сообщение об ошибке для пользователя
+          $results['errorMessage'] = "Неправильный пароль или логин, попробуйте ещё раз.";
+          require(TEMPLATE_PATH . "/admin/loginForm.php");
+	}
 
     } else {
 
@@ -174,7 +192,7 @@ function deleteArticle() {
 function listArticles() {
     $results = array();
     
-    $data = Article::getList(1000000, null, "publicationDate DESC", 1);
+    $data = Article::getList(1000000, null, "publicationDate DESC", true);
     $results['articles'] = $data['results'];
     $results['totalRows'] = $data['totalRows'];
     
@@ -303,4 +321,80 @@ function deleteCategory() {
     header( "Location: admin.php?action=listCategories&status=categoryDeleted" );
 }
 
-        
+
+function newUser() {
+
+    $results = array();
+    $results['pageTitle'] = "Новый пользователь";
+    $results['formAction'] = "newUser";
+    if (isset($_POST['saveChanges'])) {
+        $user = new User;
+        $user->storeFormValues($_POST);
+	if (User::loginExist($user->login)) {
+	    $results['errorMessage'] = 'Ошибка: Логин занят';
+	    require (TEMPLATE_PATH . '/admin/editUser.php');
+	} else {
+	    $user->insert();
+	    header("Location: admin.php?action=listUsers&status=changesSaved");
+	}
+    } elseif (isset($_POST['cancel'])) {
+        // Пользователь отменяет добавление: возврат к списку пользователей
+        header("Location: admin.php?action=listUsers");
+    } else {
+	require(TEMPLATE_PATH . "/admin/editUser.php");
+    }
+}
+
+function editUser() {
+
+    $results = array();
+    $results['pageTitle'] = "Редактировать пользователя";
+    $results['formAction'] = "editUser";
+
+    if (isset($_POST['saveChanges'])) {
+	$user = User::getById((int) $_POST['userId']);
+	$user->storeFormValues($_POST);
+	if (User::loginExist($user->login) && 
+		$user->id != User::loginId($user->login)) {
+	    $results['errorMessage'] = 'Ошибка: Логин занят';
+	    require(TEMPLATE_PATH . '/admin/editUser.php');
+	} else {
+	    $user->update();
+	    header("Location: admin.php?action=listUsers&status=changesSaved");
+	}
+    } elseif (isset($_POST['cancel'])) {
+        // Пользователь отменяет редактирование: возврат к списку пользователей
+        header("Location: admin.php?action=listUsers" );
+    } else {
+        // Отобразить данные пользователя перед редактированием
+        $results['user'] = User::getById((int) $_GET['userId']);
+	require(TEMPLATE_PATH . "/admin/editUser.php");
+    }
+}
+
+function listUsers() {
+    $results = array();
+    $data = User::getList();
+    $results['users'] = $data['results'];
+    $results['totalRows'] = $data['totalRows'];
+    $results['pageTitle'] = "Пользователи";
+
+    if (isset($_GET['status'])) {
+        if ($_GET['status'] == "changesSaved") {
+	    $results['statusMessage'] = "Изменения сохранены.";
+	} elseif ($_GET['status'] == "userDeleted") {
+	    $results['statusMessage'] = "Пользователь удалён.";
+	}
+    }
+    require(TEMPLATE_PATH . "/admin/listUsers.php");
+}
+
+function deleteUser() {
+
+    if (!$user = User::getById((int)$_GET['userId'])) {
+        header("Location: admin.php?action=listUsers&error=userNotFound");
+        return;
+    }
+    $user->delete();
+    header("Location: admin.php?action=listUsers&status=userDeleted");
+}
