@@ -102,7 +102,7 @@ class Category
 
     while ( $row = $st->fetch() ) {
       $category = new Category( $row );
-      $list[] = $category;
+      $list += [$category->id => $category];
     }
 
     // Получаем общее количество категорий, которые соответствуют критериям

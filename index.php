@@ -32,23 +32,22 @@ function archive()
 {
     $results = [];
     
-    $categoryId = ( isset( $_GET['categoryId'] ) && $_GET['categoryId'] ) ? (int)$_GET['categoryId'] : null;
-    
-    $results['category'] = Category::getById( $categoryId );
-    
-    $data = Article::getList( 100000, $results['category'] ? $results['category']->id : null );
-    
+    $categoryId = isset($_GET['categoryId']) ? (int) $_GET['categoryId'] : null;
+    $subcategoryId = isset($_GET['subcategoryId']) ? (int) $_GET['subcategoryId'] : null;
+    $results['category'] = Category::getById($categoryId);
+    $results['subcategory'] = Subcategory::getById($subcategoryId);
+    $data = Article::getList(100000, $categoryId);
+    $datas = Article::getBySubcat(100000, $subcategoryId);
     $results['articles'] = $data['results'];
     $results['totalRows'] = $data['totalRows'];
+    $results['articless'] = $datas['results'];
+    $results['totalRowss'] = $datas['totalRows'];
+    $results['categories'] = Category::getList()['results'];
+    $results['subcategories'] = Subcategory::getList()['results'];
     
-    $data = Category::getList();
-    $results['categories'] = array();
-    
-    foreach ( $data['results'] as $category ) {
-        $results['categories'][$category->id] = $category;
-    }
-    
-    $results['pageHeading'] = $results['category'] ?  $results['category']->name : "Article Archive";
+    $results['pageHeading'] = $categoryId === 0 ? 'Без категории' : ($subcategoryId === 0 ?
+	    'Без подкатегории' : ($results['category'] ?  $results['category']->name : 
+	($results['subcategory'] ?  $results['subcategory']->name : "Article Archive")));
     $results['pageTitle'] = $results['pageHeading'] . " | Widget News";
     
     require( TEMPLATE_PATH . "/archive.php" );
@@ -75,6 +74,7 @@ function viewArticle()
     }
     
     $results['category'] = Category::getById($results['article']->categoryId);
+    $results['subcategory'] = Subcategory::getById($results['article']->subcategoryId);
     $results['pageTitle'] = $results['article']->title . " | Простая CMS";
     
     require(TEMPLATE_PATH . "/viewArticle.php");
@@ -89,13 +89,8 @@ function homepage()
     $data = Article::getList(HOMEPAGE_NUM_ARTICLES);
     $results['articles'] = $data['results'];
     $results['totalRows'] = $data['totalRows'];
-    
-    $data = Category::getList();
-    $results['categories'] = array();
-    foreach ( $data['results'] as $category ) { 
-        $results['categories'][$category->id] = $category;
-    } 
-    
+    $results['categories'] = Category::getList()['results'];
+    $results['subcategories'] = Subcategory::getList()['results'];
     $results['pageTitle'] = "Простая CMS на PHP";
     
 //    echo "<pre>";

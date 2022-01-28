@@ -26,6 +26,11 @@ class Article
     * @var int ID категории статьи
     */
     public $categoryId = null;
+    
+     /**
+    * @var int ID подкатегории статьи
+    */
+    public $subcategoryId = null;
 
     /**
     * @var string Краткое описание статьи
@@ -81,6 +86,10 @@ class Article
       
       if (isset($data['categoryId'])) {
           $this->categoryId = (int) $data['categoryId'];      
+      }
+      
+      if (isset($data['subcategoryId'])) {
+          $this->subcategoryId = (int) $data['subcategoryId'];      
       }
       
       if (isset($data['summary'])) {
@@ -155,7 +164,11 @@ class Article
     {
         $conn = new PDO(DB_DSN, DB_USERNAME, DB_PASSWORD);
         $fromPart = "FROM articles";
-        $categoryClause = $categoryId ? "WHERE categoryId = :categoryId" : ($activ ? "" : "WHERE active = 1");
+        $categoryClause = $categoryId ? "WHERE categoryId = :categoryId" . ($activ ? "" : " AND active = 1") :
+	    ($activ ? "" : "WHERE active = 1");
+	if ($categoryId === 0) {
+	    $categoryClause = "WHERE categoryId IS NULL AND active = 1";	    
+	}
         $sql = "SELECT *, UNIX_TIMESTAMP(publicationDate) 
                 AS publicationDate
                 $fromPart $categoryClause
@@ -167,10 +180,13 @@ class Article
 //                        echo "</pre>";
 //                        Здесь $st - текст предполагаемого SQL-запроса, причём переменные не отображаются
         $st->bindValue(":numRows", $numRows, PDO::PARAM_INT);
-        
-        if ($categoryId) 
-            $st->bindValue( ":categoryId", $categoryId, PDO::PARAM_INT);
-        
+        if ($categoryId) {
+	    $st->bindValue(":categoryId", $categoryId, PDO::PARAM_INT);
+	    $categoryClause = "WHERE categoryId = $categoryId";
+	    if (!$activ) {
+		$categoryClause .= ' AND active = 1';		
+	    }
+	}        
         $st->execute(); // выполняем запрос к базе данных
 //                        echo "<pre>";
 //                        print_r($st);
@@ -182,7 +198,6 @@ class Article
             $article = new Article($row);
             $list[] = $article;
         }
-
         // Получаем общее количество статей, которые соответствуют критерию
         $sql = "SELECT COUNT(*) AS totalRows $fromPart $categoryClause";
         $totalRows = $conn->query($sql)->fetch();
@@ -211,10 +226,12 @@ class Article
 
         // Вставляем статью
         $conn = new PDO( DB_DSN, DB_USERNAME, DB_PASSWORD );
-        $sql = "INSERT INTO articles ( publicationDate, categoryId, title, summary, content, active ) VALUES ( FROM_UNIXTIME(:publicationDate), :categoryId, :title, :summary, :content, :active )";
+        $sql = "INSERT INTO articles ( publicationDate, categoryId, subcategoryId, title, summary, content, active ) "
+		. "VALUES ( FROM_UNIXTIME(:publicationDate), :categoryId, :subcategoryId, :title, :summary, :content, :active )";
         $st = $conn->prepare ( $sql );
         $st->bindValue( ":publicationDate", $this->publicationDate, PDO::PARAM_INT );
-        $st->bindValue( ":categoryId", $this->categoryId, PDO::PARAM_INT );
+        $st->bindValue( ":categoryId", $this->categoryId, $this->categoryId ? PDO::PARAM_INT : PDO::PARAM_NULL);
+	$st->bindValue( ":subcategoryId", $this->subcategoryId, $this->subcategoryId ? PDO::PARAM_INT : PDO::PARAM_NULL);
         $st->bindValue( ":title", $this->title, PDO::PARAM_STR );
         $st->bindValue( ":summary", $this->summary, PDO::PARAM_STR );
         $st->bindValue( ":content", $this->content, PDO::PARAM_STR );
@@ -237,12 +254,13 @@ class Article
       // Обновляем статью
       $conn = new PDO( DB_DSN, DB_USERNAME, DB_PASSWORD );
       $sql = "UPDATE articles SET publicationDate=FROM_UNIXTIME(:publicationDate),"
-              . " categoryId=:categoryId, title=:title, summary=:summary,"
-              . " content=:content, active=:active WHERE id = :id";
+              . " categoryId=:categoryId, subcategoryId=:subcategoryId, title=:title,"
+	      . " summary=:summary, content=:content, active=:active WHERE id = :id";
       
       $st = $conn->prepare ( $sql );
       $st->bindValue( ":publicationDate", $this->publicationDate, PDO::PARAM_INT );
-      $st->bindValue( ":categoryId", $this->categoryId, PDO::PARAM_INT );
+      $st->bindValue( ":categoryId", $this->categoryId, $this->categoryId ? PDO::PARAM_INT : PDO::PARAM_NULL);
+      $st->bindValue( ":subcategoryId", $this->subcategoryId, $this->subcategoryId ? PDO::PARAM_INT : PDO::PARAM_NULL);
       $st->bindValue( ":title", $this->title, PDO::PARAM_STR );
       $st->bindValue( ":summary", $this->summary, PDO::PARAM_STR );
       $st->bindValue( ":content", $this->content, PDO::PARAM_STR );
@@ -268,5 +286,47 @@ class Article
       $st->execute();
       $conn = null;
     }
-
+    
+    
+    /**
+    * Получаем все статьи по подкатегории
+    */
+    public static function getBySubcat($numRows=1000000, $subcategoryId=null, 
+	    $activ=false, $order="publicationDate DESC") {
+	
+	$conn = new PDO(DB_DSN, DB_USERNAME, DB_PASSWORD);
+        $fromPart = "FROM articles";
+	$subcategoryClause = $subcategoryId ? "WHERE subcategoryId = :subcategoryId" . 
+		($activ ? "" : " AND active = 1") : ($activ ? "" : "WHERE active = 1");    
+	if ($subcategoryId === 0) {
+	    $subcategoryClause = "WHERE subcategoryId IS NULL AND active = 1";	    
+	}
+	$sql = "SELECT *, UNIX_TIMESTAMP(publicationDate) 
+                AS publicationDate
+                $fromPart $subcategoryClause
+                ORDER BY  $order  LIMIT :numRows";
+        $st = $conn->prepare($sql);
+        $st->bindValue(":numRows", $numRows, PDO::PARAM_INT);
+        if ($subcategoryId) {
+	    $st->bindValue(":subcategoryId", $subcategoryId, PDO::PARAM_INT);
+	    $subcategoryClause = "WHERE subcategoryId = $subcategoryId";
+	    if (!$activ) {
+		$subcategoryClause .= ' AND active = 1';		
+	    }
+	}
+        $st->execute();
+        $list = array();
+	while ($row = $st->fetch()) {
+            $article = new Article($row);
+            $list[] = $article;
+        }
+        // Получаем общее количество статей, которые соответствуют критерию
+	$sql = "SELECT COUNT(*) AS totalRows $fromPart $subcategoryClause";
+	$totalRows = $conn->query($sql)->fetch();
+        $conn = null;
+        return array(
+	    "results" => $list,
+	    "totalRows" => $totalRows[0]
+		);
+    }
 }
