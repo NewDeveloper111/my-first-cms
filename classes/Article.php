@@ -46,6 +46,11 @@ class Article
     * @var int Активность статьи
     */
     public $active = null;
+    
+    /**
+    * @var array Авторы статьи
+    */
+    public $authors = null;
     /**
     * Устанавливаем свойства с помощью значений в заданном массиве
     *
@@ -103,6 +108,10 @@ class Article
       if (isset($data['active'])) {
           $this->active = (int) $data['active'];  
       }
+      
+      if (isset($data['authors'])) {
+          $this->authors = (array) $data['authors'];  
+      }
     }
 
 
@@ -134,17 +143,22 @@ class Article
     * @param int ID статьи
     * @return Article|false Объект статьи или false, если запись не найдена или возникли проблемы
     */
-    public static function getById($id) {
+    public static function getById($id, $select=false) {
         $conn = new PDO( DB_DSN, DB_USERNAME, DB_PASSWORD );
         $sql = "SELECT *, UNIX_TIMESTAMP(publicationDate) "
                 . "AS publicationDate FROM articles WHERE id = :id";
         $st = $conn->prepare($sql);
         $st->bindValue(":id", $id, PDO::PARAM_INT);
         $st->execute();
-
-        $row = $st->fetch();
+	$row = $st->fetch();
+	$column = $select ? "id" : "login";
+	$sql = "SELECT $column FROM users_articles LEFT JOIN users ON "
+		. "user_id = id WHERE users_articles.article_id = :article_id";
+	$st = $conn->prepare($sql);
+	$st->bindValue(":article_id", $id, PDO::PARAM_INT);
+	$st->execute();
+	$row['authors'] = $st->fetchAll(PDO::FETCH_COLUMN);
         $conn = null;
-        
         if ($row) { 
             return new Article($row);
         }
@@ -196,8 +210,16 @@ class Article
 
         while ($row = $st->fetch()) {
             $article = new Article($row);
-            $list[] = $article;
+            $list += [$article->id => $article];
         }
+	$sql = "SELECT login FROM users_articles LEFT JOIN users ON "
+		. "user_id = id WHERE users_articles.article_id = :article_id";
+	foreach ($list as $id => $article) {
+	    $st = $conn->prepare($sql);
+	    $st->bindValue(":article_id", $id, PDO::PARAM_INT);
+	    $st->execute();
+	    $article->authors = $st->fetchAll(PDO::FETCH_COLUMN);
+	}
         // Получаем общее количество статей, которые соответствуют критерию
         $sql = "SELECT COUNT(*) AS totalRows $fromPart $categoryClause";
         $totalRows = $conn->query($sql)->fetch();
@@ -238,6 +260,13 @@ class Article
 	$st->bindValue( ":active", $this->active, PDO::PARAM_INT );
         $st->execute();
         $this->id = $conn->lastInsertId();
+	$sql = "INSERT INTO users_articles VALUES (:user_id, :article_id)";
+	foreach ($this->authors as $id) {
+	    $st = $conn->prepare($sql);
+	    $st->bindValue(":user_id", $id, PDO::PARAM_INT);
+	    $st->bindValue(":article_id", $this->id, PDO::PARAM_INT);
+	    $st->execute();
+	}
         $conn = null;
     }
 
@@ -267,6 +296,17 @@ class Article
       $st->bindValue( ":id", $this->id, PDO::PARAM_INT );
       $st->bindValue( ":active", $this->active, PDO::PARAM_INT );
       $st->execute();
+      $sql = "DELETE FROM users_articles WHERE article_id = :article_id";
+      $st = $conn->prepare($sql);
+      $st->bindValue(":article_id", $this->id, PDO::PARAM_INT);
+      $st->execute();
+      $sql = "INSERT INTO users_articles VALUES (:user_id, :article_id)";
+      foreach ($this->authors as $id) {
+	    $st = $conn->prepare($sql);
+	    $st->bindValue(":user_id", $id, PDO::PARAM_INT);
+	    $st->bindValue(":article_id", $this->id, PDO::PARAM_INT);
+	    $st->execute();
+      }
       $conn = null;
     }
 
@@ -318,8 +358,16 @@ class Article
         $list = array();
 	while ($row = $st->fetch()) {
             $article = new Article($row);
-            $list[] = $article;
+            $list += [$article->id => $article];
         }
+	$sql = "SELECT login FROM users_articles LEFT JOIN users ON "
+		. "user_id = id WHERE users_articles.article_id = :article_id";
+	foreach ($list as $id => $article) {
+	    $st = $conn->prepare($sql);
+	    $st->bindValue(":article_id", $id, PDO::PARAM_INT);
+	    $st->execute();
+	    $article->authors = $st->fetchAll(PDO::FETCH_COLUMN);
+	}
         // Получаем общее количество статей, которые соответствуют критерию
 	$sql = "SELECT COUNT(*) AS totalRows $fromPart $subcategoryClause";
 	$totalRows = $conn->query($sql)->fetch();

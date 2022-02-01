@@ -34,6 +34,10 @@
                               
                 </h2>
               <p class="summary"><?php echo htmlspecialchars( $article->summary )?></p>
+	      <?php if ($article->authors !== []) { ?>
+	      <p style="font-style: italic; margin: 5px; color: #555">Автор<?php echo count($article->authors) == 1 ? '' : 'ы' ?>: <?php 
+	      echo implode(', ', $article->authors) ?></p>
+	      <?php } ?>
             </li>
 
     <?php } ?>
