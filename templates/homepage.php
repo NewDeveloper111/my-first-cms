@@ -25,7 +25,7 @@
                 </span>
 		
             </h2>
-            <p class="summary"><?php echo htmlspecialchars(mb_strimwidth($article->content, 0, 53, '...'))?></p>
+            <p class="summary<?php echo $article->id?>"><?php echo htmlspecialchars(mb_strimwidth($article->content, 0, 53, '...'))?></p>
             <?php if ($article->authors !== []) { ?>
 	    <p class="category" style="font-size: 90%; margin-top: 3px; color: #555">Автор<?php echo count($article->authors) == 1 ? '' : 'ы' ?>: <?php echo implode(', ', $article->authors) ?></p>
 	    <?php } ?>
@@ -34,8 +34,8 @@
             <ul class="ajax-load">
                 <li><a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="ajaxArticleBodyByPost" data-contentId="<?php echo $article->id?>">Показать продолжение (POST)</a></li>
                 <li><a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="ajaxArticleBodyByGet" data-contentId="<?php echo $article->id?>">Показать продолжение (GET)</a></li>
-                <li><a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="">(POST) -- NEW</a></li>
-                <li><a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="">(GET)  -- NEW</a></li>
+                <li><a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="ajaxArticlePost" data-contentId="<?php echo $article->id?>">(POST) -- NEW</a></li>
+                <li><a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="ajaxArticleGet" data-contentId="<?php echo $article->id?>">(GET)  -- NEW</a></li>
             </ul>
             <a href=".?action=viewArticle&amp;articleId=<?php echo $article->id?>" class="showContent" data-contentId="<?php echo $article->id?>">Показать полностью</a>
         </li>
